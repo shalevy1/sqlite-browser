@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sqlite3 Browser</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/bootstrap.min.css" />
+<link rel="stylesheet" href="css/split-pane.css" />
+<link rel="stylesheet" href="css/handsontable.full.min.css" />
+
+<script>
+window.jQuery = window.$ = require('./js/jquery-2.1.4.min.js');
+</script>
+<script type="text/javascript" src="js/split-pane.js"></script>
+<script type="text/javascript" src="js/handsontable.full.min.js"></script>
+
+<script>
+$(function(){
+
+  $(window).resize(function() {
+    $(".sql-table").height($("#right-component").height()-50);
+  });
+
+
+  var remote = require('remote');
+  var sql = remote.require('./js/script.js');
+
+
+  $(".split-pane").splitPane();
+
+
+  $(".tables").on("click","a",function(){
+  	var tb_name = $(this).text();
+  	var header = [];
+  	var columns = [];
+  	sql.columns(tb_name).forEach(function(rec){
+  	  header.push(rec.name);
+  	  columns.push({data: rec.name });
+  	});
+
+  	var sqltable=$(".sql-table");
+  	sqltable.html("");
+
+var dt =  sql.select_all(tb_name);
+	  var table = new Handsontable(sqltable[0],
+	   {
+	       data: dt,
+	       colHeaders: header,
+	       columns: columns,
+	       rowHeaders: true,
+	       stretchH: 'all',
+	       columnSorting: true,
+	       //contextMenu: true,
+	       className: "htCenter htMiddle",
+	       manualColumnResize: true,
+	       manualRowResize: true,
+	       afterChange: function(changes, source) {
+	       if(source=="edit"){
+	          var edit_info = changes[0];
+	          var obj = {};
+	          obj.rowid = this.getSourceDataAtRow(edit_info[0]).row_id;
+	          obj.column_name = edit_info[1];
+	          obj.value = edit_info[3];
+	          obj.table_name = tb_name;
+	          ret = sql.edit(obj);
+	          if(ret.error){
+	            alert(ret.msg);
+	            this.setDataAtRowProp(edit_info[0],edit_info[1],edit_info[2],"rollback");
+	          }
+	       }
+
+		  }
+
+	    });
+
+	    $(".ddl").text(sql.ddl(tb_name).replace(/,/g,",\n"));
+
+  });
+
+
+
+  var holder = document.getElementById('holder');
+  holder.ondragover = function(){
+    return false;
+  };
+  holder.ondragleave = holder.ondragend = function () {
+    return false;
+  };
+  holder.ondrop = function (e) {
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    holder.innerText = file.path;
+    sql.load(file.path);
+    $(".tables").html("");
+    $.each(sql.tables(),function(){
+      $(".tables").append("<li><a >"+this+"</a></li>");
+    });
+    return false;
+  };
+
+
+
+
+
+
+
+  ////////////
+$(".show_data").click(function(){
+  $(".sql-table").removeClass("hide_div");
+  $(".ddl").addClass("hide_div");
+});
+$(".show_ddl").click(function(){
+  $(".ddl").removeClass("hide_div");
+  $(".sql-table").addClass("hide_div");
+});
+
+});
+
+  </script>
+<style type="text/css" media="all">
+html, body {
+    height: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.split-pane-divider {
+    background: #aaa;
+    left: 300px; /* Same as left component width */
+    width: 5px;
+}
+#left-component {
+    width: 300px;
+}
+
+#right-component {
+    left: 300px;  /* Same as left component width */
+    margin-left: 5px;  /* Same as divider width */
+}
+
+.sql-table .htCore > tbody > tr:nth-child(odd) > td {
+  background-color: #f9f9f9;
+     max-width: 200px;
+       min-width: 70px;
+       overflow: hidden;
+       text-overflow: ellipsis;
+       white-space: nowrap;
+}
+
+.hide_div{
+  display: none;
+}
+</style>
+
+
+</head>
+<body>
+  <div style="height: 10%;border: solid 1px #000000;" id="holder">
+    ここにsqlite3のデータファイルをドラッグ&ドロップしてください
+  </div>
+  <div class="split-pane fixed-left" style="height: 88%;">
+      <div class="split-pane-component" id="left-component">
+          <ul class="tables"></ul>
+      </div>
+      <div class="split-pane-divider" ></div>
+      <div class="split-pane-component" id="right-component">
+        <div style="height: 30px;margin: 5px;">
+           <button class="show_data" >データ表示</button><button class="show_ddl" >定義表示</button>
+        </div>
+
+          <div class="sql-table" style="margin: 5px;overflow: hidden;"></div>
+
+        <pre class="ddl hide_div"></pre>
+
+      </div>
+  </div>
+</body>
+</html>
