@@ -21,34 +21,54 @@ $(function(){
     $(".sql-table").height($("#right-component").height()-50);
   });
 
-
-  var remote = require('remote');
-  var sql = remote.require('./js/script.js');
+  //remoteだと遅すぎるのでレンダリング側のプロセスを利用する
+  //画面固まるけど・・・
+  //var remote = require('remote');
+  var sql = require('./js/script.js');
 
 
   $(".split-pane").splitPane();
 
+  var tb_name;
+  $(".reload").click(function(){
+    if(tb_name){
+      load_table();
+    }
+  });
+  $(".tables").on("click","a",function(e){
+    e.preventDefault();
+    tb_name= $(this).text();
+    load_table();
+    return false;
+  });
 
-  $(".tables").on("click","a",function(){
-  	var tb_name = $(this).text();
+  var load_table = function(){
+    var max = $(".max_cnt").val();
   	var header = [];
   	var columns = [];
+    var colwidth=[];
+    var sqltable=$(".sql-table");
+    sqltable.html("");
+
+    //$(".msg").text("テーブル情報を取得中です・・・");
   	sql.columns(tb_name).forEach(function(rec){
   	  header.push(rec.name);
   	  columns.push({data: rec.name });
+      colwidth.push(100);
   	});
 
-  	var sqltable=$(".sql-table");
-  	sqltable.html("");
+    //$(".msg").text("データを取得中です・・・");
+    var dt =  sql.select_all(tb_name,max);
 
-var dt =  sql.select_all(tb_name);
+    //$(".msg").text("画面を構築中です・・・");
 	  var table = new Handsontable(sqltable[0],
 	   {
 	       data: dt,
 	       colHeaders: header,
 	       columns: columns,
+         colWidths:colwidth,
 	       rowHeaders: true,
-	       stretchH: 'all',
+	       //stretchH: 'all',
 	       columnSorting: true,
 	       //contextMenu: true,
 	       className: "htCenter htMiddle",
@@ -72,12 +92,9 @@ var dt =  sql.select_all(tb_name);
 		  }
 
 	    });
-
+      //$(".msg").text("");
 	    $(".ddl").text(sql.ddl(tb_name).replace(/,/g,",\n"));
-
-  });
-
-
+  };
 
   var holder = document.getElementById('holder');
   holder.ondragover = function(){
@@ -92,9 +109,12 @@ var dt =  sql.select_all(tb_name);
     holder.innerText = file.path;
     sql.load(file.path);
     $(".tables").html("");
+    $(".sql-table").html("");
+    $(".ddl").html("");
     $.each(sql.tables(),function(){
       $(".tables").append("<li><a >"+this+"</a></li>");
     });
+
     return false;
   };
 
@@ -166,7 +186,9 @@ html, body {
       <div class="split-pane-divider" ></div>
       <div class="split-pane-component" id="right-component">
         <div style="height: 30px;margin: 5px;">
-           <button class="show_data" >データ表示</button><button class="show_ddl" >定義表示</button>
+           <button class="show_data" >データ表示</button><button class="show_ddl" >定義表示</button>&nbsp;&nbsp;&nbsp;
+           max:<input type="text" class="max_cnt" style="width:80px;text-align: right;margin:0;" value="1000"><button class="reload" >再表示</button>
+           <div style="color:red;" class="msg"></div>
         </div>
 
           <div class="sql-table" style="margin: 5px;overflow: hidden;"></div>

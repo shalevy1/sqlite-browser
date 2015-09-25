@@ -55,9 +55,30 @@ fs.writeFileSync(filename, new Buffer(db.export()));
     });
     return ret;
   }
-  this.select_all = function (tbl_name) {
-    var ret =[];
-    db.each("SELECT rowid as row_id,* from "+tbl_name,function(rec){
+  this.select_all = function (tbl_name,max) {
+
+    /*
+    var ret = null;
+    var result = db.exec("SELECT rowid as row_id,* from "+tbl_name);
+    if (result.length > 0 ){
+      ret= result[0].values;
+      ret.forEach(function(row,i){
+        row.forEach(function(col,j){
+          if(col && col.length > 15000 ){
+            ret[i][j] = col.slice(0,15000);
+          }
+        });
+      });
+    }
+    */
+    var ret = [];
+    var sql = "SELECT rowid as row_id,* from "+tbl_name;
+    if(max && Number(max)){
+      if(Number(max)!=0){
+        sql+=" limit "+Number(max);
+      }
+    }
+    db.each(sql,function(rec){
       for(var col in rec){
         if(rec[col] && rec[col].length > 15000 ){
           rec[col] = rec[col].slice(0,15000);
@@ -65,6 +86,7 @@ fs.writeFileSync(filename, new Buffer(db.export()));
       }
       ret.push(rec);
     });
+
     return ret;
   },
   this.edit = function (obj) {
